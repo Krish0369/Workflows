@@ -44,7 +44,7 @@ export default async function NonPersistentSessionWorkflow(
 if (nonPersistentConnectionIDs.includes(connectionId)) {
       try {
         console.log("Matched connection, setting SSO session policy to non_persistent");
-        kinde.ssoSession.setPolicy("non_persistent");
+        kinde.ssoSession.setPolicy("persistent");
         console.log("Policy set successfully");
       } catch (err) {
         console.error("Error calling setPolicy:", err);
