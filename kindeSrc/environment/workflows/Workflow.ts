@@ -54,6 +54,6 @@ export default async function NonPersistentSessionWorkflow(
 //     }
 //   } catch (err) {
 //     console.error("Workflow caught unexpected error:", err);
-//   }
+   }
 }
 
