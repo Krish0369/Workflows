@@ -20,7 +20,6 @@ export const workflowSettings: WorkflowSettings = {
   },
 };
 
-// Workflow function
 export default async function NonPersistentSessionWorkflow(
   event: onUserTokenGeneratedEvent
 ) {
@@ -28,13 +27,18 @@ export default async function NonPersistentSessionWorkflow(
     const kinde = event.bindings?.kinde;
     const connectionId = event.context?.auth?.connectionId;
 
-   // if (!kinde?.ssoSession) {
-   //   console.warn("SSO session not available, skipping workflow");
-    //  return;
-   // }
+    if (!kinde) {
+      console.warn("Bindings.kinde is undefined, skipping workflow");
+      return;
+    }
+
+//    if (!kinde.ssoSession) {
+ //     console.warn("SSO session object not available, skipping workflow");
+ //     return;
+  //  }
 
     if (!connectionId) {
-      console.warn("Connection ID not found, skipping workflow");
+      console.warn("Connection ID not found in event.context.auth, skipping workflow");
       return;
     }
 
@@ -44,15 +48,20 @@ export default async function NonPersistentSessionWorkflow(
 
     console.log("Non-persistent connection IDs:", nonPersistentConnectionIDs);
     console.log("Current login connectionId:", connectionId);
+    console.log("kinde.ssoSession object:", kinde.ssoSession);
 
     if (nonPersistentConnectionIDs.includes(connectionId)) {
-      console.log("Matched connection, setting SSO session policy to non_persistent");
-      kinde.ssoSession.setPolicy("non_persistent");
+      try {
+        console.log("Matched connection, setting SSO session policy to non_persistent");
+        kinde.ssoSession.setPolicy("non_persistent");
+        console.log("Policy set successfully");
+      } catch (err) {
+        console.error("Error calling kinde.ssoSession.setPolicy:", err);
+      }
     } else {
       console.log("No match, session remains persistent");
     }
   } catch (err) {
-    console.error("Workflow error:", err);
-    // Prevents login failure
+    console.error("Workflow caught unexpected error:", err);
   }
 }
