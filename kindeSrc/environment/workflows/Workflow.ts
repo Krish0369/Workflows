@@ -28,10 +28,10 @@ export default async function NonPersistentSessionWorkflow(
     const kinde = event.bindings?.kinde;
     const connectionId = event.context?.auth?.connectionId;
 
-    if (!kinde?.ssoSession) {
-      console.warn("SSO session not available, skipping workflow");
-      return;
-    }
+   // if (!kinde?.ssoSession) {
+   //   console.warn("SSO session not available, skipping workflow");
+    //  return;
+   // }
 
     if (!connectionId) {
       console.warn("Connection ID not found, skipping workflow");
