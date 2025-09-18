@@ -40,8 +40,9 @@ export default async function NonPersistentSessionWorkflow(
     console.log("Non-persistent connection IDs:", nonPersistentConnectionIDs);
     console.log("Current login connectionId:", connectionId);
     console.log("kinde.ssoSession object:", kinde.ssoSession);
-
-    if (nonPersistentConnectionIDs.includes(connectionId)) {
+//kinde.ssoSession.setPolicy("non_persistent");
+    
+    if (nonPersistentConnectionIDs.includes(event.context.auth.connectionId)) {
       try {
         console.log("Matched connection, setting SSO session policy to non_persistent");
         kinde.ssoSession.setPolicy("non_persistent");
