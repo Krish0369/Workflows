@@ -2,17 +2,17 @@ import {
   onUserTokenGeneratedEvent,
   WorkflowSettings,
   WorkflowTrigger,
-  accessTokenCustomClaims,
   getEnvironmentVariable,
 } from "@kinde/infrastructure";
 
-
+// Workflow configuration
 export const workflowSettings: WorkflowSettings = {
   id: "nonPersistentSessionWorkflow",
   name: "Non Persistent Session Workflow",
   trigger: WorkflowTrigger.UserTokenGeneration,
   bindings: {
     "kinde.accessToken": {},
+    "kinde.ssoSession": {},
     "kinde.env": {},
   },
   failurePolicy: {
@@ -20,18 +20,39 @@ export const workflowSettings: WorkflowSettings = {
   },
 };
 
+// Workflow function
 export default async function NonPersistentSessionWorkflow(
   event: onUserTokenGeneratedEvent
 ) {
-  const { kinde } = event.bindings;
+  try {
+    const kinde = event.bindings?.kinde;
+    const connectionId = event.context?.auth?.connectionId;
 
-  const raw = getEnvironmentVariable("NON_PERSISTENT_SESSION_CONNECTION_IDS")?.value || "";
-  const nonPersistentConnectionIDs = raw.split(",").map(id => id.trim()).filter(Boolean);
+    if (!kinde?.ssoSession) {
+      console.warn("SSO session not available, skipping workflow");
+      return;
+    }
 
-  console.log("nonPersistentConnectionIDs:", nonPersistentConnectionIDs);
+    if (!connectionId) {
+      console.warn("Connection ID not found, skipping workflow");
+      return;
+    }
 
-  if (nonPersistentConnectionIDs.includes(event.context.auth.connectionId)) {
-    console.log("Matched connection, setting sso session policy to non_persistent");
-    kinde.ssoSession.setPolicy("non_persistent");
+    // Environment variable as per manager (no trimming)
+    const nonPersistentConnectionIDs =
+      getEnvironmentVariable("NON_PERSISTENT_SESSION_CONNECTION_IDS")?.value?.split(",") || [];
+
+    console.log("Non-persistent connection IDs:", nonPersistentConnectionIDs);
+    console.log("Current login connectionId:", connectionId);
+
+    if (nonPersistentConnectionIDs.includes(connectionId)) {
+      console.log("Matched connection, setting SSO session policy to non_persistent");
+      kinde.ssoSession.setPolicy("non_persistent");
+    } else {
+      console.log("No match, session remains persistent");
+    }
+  } catch (err) {
+    console.error("Workflow error:", err);
+    // Prevents login failure
   }
 }
