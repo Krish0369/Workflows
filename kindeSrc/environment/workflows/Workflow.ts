@@ -23,27 +23,24 @@ export const workflowSettings: WorkflowSettings = {
 export default async function NonPersistentSessionWorkflow(
   event: onUserTokenGeneratedEvent
 ) {
-  try {
-    const kinde = event.bindings?.kinde;
-    const connectionId = event.context?.auth?.connectionId;
+  const kinde = event.bindings?.kinde;
+  const connectionId = event.context?.auth?.connectionId;
 
-    if (!connectionId) {
-      console.warn("Connection ID not found in event.context.auth, skipping workflow");
-      return;
-    }
-
-    // Environment variable as per manager (no trimming)
-    const nonPersistentConnectionIDs =
-      getEnvironmentVariable("NON_PERSISTENT_SESSION_CONNECTION_IDS")?.value?.split(",") || [];
-
-    console.log("Non-persistent connection IDs:", nonPersistentConnectionIDs);
-    console.log("Current login connectionId:", connectionId);
-    console.log("kinde.ssoSession object:", kinde.ssoSession);
-    kinde.ssoSession.setPolicy("non_persistent");
-
-  } catch (err) {
-    console.error("Workflow error:", err);
+  if (!connectionId) {
+    console.warn("Connection ID not found in event.context.auth, skipping workflow");
+    return;
   }
-}
 
+  // Environment variable as per manager (no trimming)
+  const nonPersistentConnectionIDs =
+    getEnvironmentVariable("NON_PERSISTENT_SESSION_CONNECTION_IDS")?.value?.split(",") || [];
+
+  console.log("Non-persistent connection IDs:", nonPersistentConnectionIDs);
+  console.log("Current login connectionId:", connectionId);
+  console.log("kinde.ssoSession object:", kinde.ssoSession);
+
+  // Directly set SSO session policy
+  kinde.ssoSession.setPolicy("non_persistent");
+  console.log("SSO session policy set to non_persistent");
+}
 
