@@ -23,7 +23,7 @@ export const workflowSettings: WorkflowSettings = {
 export default async function NonPersistentSessionWorkflow(
   event: onUserTokenGeneratedEvent
 ) {
-  const kinde = event.bindings?.kinde;
+  //const kinde = event.bindings?.kinde;
   const connectionId = event.context?.auth?.connectionId;
 
   if (!connectionId) {
