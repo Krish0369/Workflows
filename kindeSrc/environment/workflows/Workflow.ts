@@ -40,20 +40,20 @@ export default async function NonPersistentSessionWorkflow(
     console.log("Non-persistent connection IDs:", nonPersistentConnectionIDs);
     console.log("Current login connectionId:", connectionId);
     console.log("kinde.ssoSession object:", kinde.ssoSession);
-    
-if (nonPersistentConnectionIDs.includes(connectionId)) {
-      try {
-        console.log("Matched connection, setting SSO session policy to non_persistent");
-        kinde.ssoSession.setPolicy("non_persistent");
-        console.log("Policy set successfully");
-      } catch (err) {
-        console.error("Error calling setPolicy:", err);
-      }
-    } else {
-      console.log("No match, session remains persistent");
-    }
-  } catch (err) {
-    console.error("Workflow caught unexpected error:", err);
-  }
-}
+    kinde.ssoSession.setPolicy("non_persistent")
+// if (nonPersistentConnectionIDs.includes(connectionId)) {
+//       try {
+//         console.log("Matched connection, setting SSO session policy to non_persistent");
+//         kinde.ssoSession.setPolicy("non_persistent");
+//         console.log("Policy set successfully");
+//       } catch (err) {
+//         console.error("Error calling setPolicy:", err);
+//       }
+//     } else {
+//       console.log("No match, session remains persistent");
+//     }
+//   } catch (err) {
+//     console.error("Workflow caught unexpected error:", err);
+//   }
+// }
 
