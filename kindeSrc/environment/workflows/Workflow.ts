@@ -45,4 +45,4 @@ if (nonPersistentConnectionIDs.includes(event.context.auth.connectionId)) {
     console.log(“Matched connection, setting sso session policy to non_persistent”);
     kinde.ssoSession.setPolicy(“non_persistent”);
   }
-}
+
