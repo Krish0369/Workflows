@@ -20,8 +20,8 @@ export default async function mapEntraIdClaimsWorkflow({ request, context }) {
   
   // === Updated authentication handling ===
   if (!authentication?.connection_id) {
-    console.log('No connection ID found, skipping claims mapping');
-    return;
+    console.log('No connection ID found — continuing anyway (possible SAML or custom connection)');
+    //return;
   }
 
   // If it's OAuth2
