@@ -18,6 +18,7 @@ const claimMappings: Record<string, string> = {
     // Username
     "preferredusername": "kp_usr_username",
     "preferred_username": "kp_usr_username",
+    "preferred_username": "usr_username",
     "upn": "kp_usr_username",
     // Names
     "givenname": "kp_usr_first_name",
