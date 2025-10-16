@@ -5,104 +5,123 @@ import {
     createKindeAPI,
 } from "@kinde/infrastructure";
 
+// This workflow syncs user attributes and groups from a SAML assertion into Kinde custom user properties.
+// It works with any SAML connection, as long as attributes and groups are exposed in the SAML response.
+//
+// Setup steps:
+//
+// 1. In your Identity Provider (IdP), configure SAML attribute statements / group attribute statements
+//    to send the attributes you want to sync.
+//
+// 2. In Kinde, create custom user property keys to store these attributes:
+//    * phone_number
+//    * user_type
+//    * groups
+//
+//    Note: In the `attributeSyncConfig` object below, update the `samlNames` array
+//    for each property to include all possible attribute names your IdP(s) might send
+//    (e.g., ["phone_number", "phone", "mobilephone"]).
+//
+// 3. Create an M2M application in Kinde with the following scope enabled:
+//    * update:user_properties
+//
+//    In Settings -> Environment variables, configure the following (values from your M2M application):
+//    * KINDE_WF_M2M_CLIENT_ID
+//    * KINDE_WF_M2M_CLIENT_SECRET  (mark as sensitive)
+//
+// 4. Ensure the properties are included in tokens by toggling OFF the “Private” option in their settings.
+//    Then, in the Application settings in Kinde, add them under **Token customization**.
+//
+// Once configured, this workflow will run after authentication, read the attributes from the SAML assertion,
+// and sync them into Kinde so they can be used in tokens or elsewhere.
+
 export const workflowSettings: WorkflowSettings = {
-    id: "mapEntraIdClaims",
-    name: "MapEntraIDSamlClaims",
-    failurePolicy: { action: "stop" },
+    id: "postAuthentication",
+    name: "SamlAttributesSync",
+    failurePolicy: {
+        action: "stop",
+    },
     trigger: WorkflowTrigger.PostAuthentication,
-    bindings: { "kinde.env": {}, url: {} },
+    bindings: {
+        "kinde.env": {},
+        url: {},
+    },
 };
 
-// Map SAML attribute variations to Kinde user properties
-const claimMappings: Record<string, string> = {
-    // Username
-    "preferredusername": "kp_usr_username",
-    "preferred_username": "kp_usr_username",
-    "preferred_username": "usr_username",
-    "upn": "kp_usr_username",
-    // Names
-    "givenname": "kp_usr_first_name",
-    "given_name": "kp_usr_first_name",
-    "surname": "kp_usr_last_name",
-    "familyname": "kp_usr_last_name",
-    "family_name": "kp_usr_last_name",
-    "name": "kp_usr_display_name",
-    // Email
-    "email": "kp_usr_email",
-    "mail": "kp_usr_email",
-    // Other useful attributes
-    "jobtitle": "job_title",
-    "department": "department",
-    "mobilephone": "mobile_phone",
-    "businessphones": "business_phones",
-};
+type SamlValue = { value?: string };
+type SamlAttribute = { name?: string; values?: SamlValue[] };
+type SamlAttributeStatement = { attributes?: SamlAttribute[] };
+
+const attributeSyncConfig = [
+    {
+        samlNames: ["phone_number", "phone", "mobilephone"],
+        kindeKey: "phone_number",
+        multiValue: false,
+    },
+    {
+        samlNames: ["preferred_username", "preferredusername"],
+        kindeKey: "kp_usr_username",
+        multiValue: false,
+    },
+    {
+        samlNames: ["groups", "group"],
+        kindeKey: "groups",
+        multiValue: true,
+    },
+];
 
 export default async function handlePostAuth(event: onPostAuthenticationEvent) {
-    const { context } = event;
-    const user = context?.user;
-    const protocol = context?.auth?.provider?.protocol?.toLowerCase();
+    const protocol = event.context?.auth?.provider?.protocol;
+    if (!protocol || protocol !== "saml") return;
 
-    if (!user || !protocol) return;
+    const attributeStatements =
+        event.context.auth.provider?.data?.assertion
+            ?.attributeStatements as SamlAttributeStatement[] | undefined;
+    if (!attributeStatements?.length) return;
 
-    let claims: Record<string, any> = {};
+    const samlAttributesMap = (attributeStatements ?? [])
+        .flatMap((statement) => statement.attributes ?? [])
+        .reduce((acc, attr) => {
+            const name = attr.name?.toLowerCase().trim();
+            if (name) {
+                const values = (attr.values ?? [])
+                    .map((v) => v.value?.trim())
+                    .filter((v): v is string => !!v);
+                if (values.length > 0) {
+                    acc.set(name, values);
+                }
+            }
+            return acc;
+        }, new Map<string, string[]>());
 
-    // --- SAML flow ---
-    if (protocol === "saml") {
-        const attributeStatements = context?.auth?.provider?.data?.assertion?.attributeStatements;
-        if (!attributeStatements?.length) {
-            console.log("No SAML attributes found — skipping workflow");
-            return;
-        }
-
-        claims = attributeStatements
-            .flatMap((stmt: any) => stmt.attributes ?? [])
-            .reduce((acc: Record<string, any>, attr: any) => {
-                const name = attr.name?.toLowerCase().replace(/[^a-z0-9_]/g, ""); // normalize name
-                if (!name) return acc;
-                const values = (attr.values ?? []).map((v: any) => v.value?.trim()).filter(Boolean);
-                if (values.length) acc[name] = values.length === 1 ? values[0] : values;
-                return acc;
-            }, {});
-
-        console.log("Processing SAML attributes for user", user.id);
-    }
-
-    // --- OIDC/OAuth2 flow ---
-    else if (protocol === "oidc" || protocol === "oauth2") {
-        const authentication = event?.request?.authentication;
-        if (!authentication) return;
-        claims = authentication.user_profile?.claims || authentication.user_profile || {};
-        console.log("Processing OIDC/OAuth2 claims for user", user.id);
-    }
-
-    else {
-        console.log(`Unsupported protocol: ${protocol} — skipping workflow`);
-        return;
-    }
-
-    // --- Map claims to Kinde properties ---
     const propertiesToUpdate: Record<string, string> = {};
-    for (const [claimKey, kindeKey] of Object.entries(claimMappings)) {
-        const value = claims[claimKey];
-        if (value !== undefined && value !== null && value !== "") {
-            propertiesToUpdate[kindeKey] = Array.isArray(value) ? value.join(", ") : String(value);
-            console.log(`Mapping ${claimKey} -> ${kindeKey}: ${propertiesToUpdate[kindeKey]}`);
+
+    for (const config of attributeSyncConfig) {
+        let foundValues: string[] | undefined;
+        for (const name of config.samlNames) {
+            const values = samlAttributesMap.get(name);
+            if (values && values.length > 0) {
+                foundValues = values;
+                break;
+            }
+        }
+
+        if (foundValues) {
+            if (config.multiValue) {
+                propertiesToUpdate[config.kindeKey] = foundValues.join(",");
+            } else {
+                propertiesToUpdate[config.kindeKey] = foundValues[0];
+            }
         }
     }
 
-    if (!Object.keys(propertiesToUpdate).length) {
-        console.log("No properties to update");
-        return;
-    }
+    if (Object.keys(propertiesToUpdate).length === 0) return;
 
-    try {
-        const kindeAPI = await createKindeAPI(event);
-        await kindeAPI.patch({
-            endpoint: `users/${user.id}/properties`,
-            params: { properties: propertiesToUpdate },
-        });
-        console.log(`Successfully updated properties for user ${user.id}`);
-    } catch (error) {
-        console.error("Error updating user properties:", error);
-    }
+    const kindeAPI = await createKindeAPI(event);
+    const userId = event.context.user.id;
+
+    await kindeAPI.patch({
+        endpoint: `users/${userId}/properties`,
+        params: { properties: propertiesToUpdate },
+    });
 }
