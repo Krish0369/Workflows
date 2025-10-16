@@ -26,7 +26,7 @@ export default async function mapEntraIdClaimsWorkflow({ request, context }) {
 
   // Check if this is a Microsoft/Entra ID connection
   const connectionName = authentication.connection_name?.toLowerCase() || '';
-  else if (!connectionName.includes('microsoft') && !connectionName.includes('entra') && !connectionName.includes('azure')) {
+  if (!connectionName.includes('microsoft') && !connectionName.includes('entra') && !connectionName.includes('azure')) {
     console.log(`Connection ${authentication.connection_name} is not a Microsoft/Entra ID connection, skipping`);
     return;
   }
