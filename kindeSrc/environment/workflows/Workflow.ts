@@ -21,7 +21,7 @@ export default async function mapEntraIdClaimsWorkflow({ request, context }) {
   // === Updated authentication handling ===
   if (!authentication){
     console.log('No authentication object, skipping claims mapping');
-    return!
+    return;
   }
   const connectionMethod = authentication.connection_method;
   const connectionName = authentication.connection_name?.toLowerCase() || '';
