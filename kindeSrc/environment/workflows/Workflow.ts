@@ -21,18 +21,21 @@ export default async function mapEntraIdClaimsWorkflow({ request, context }) {
   // === Updated authentication handling ===
   if (!authentication){
     console.log('No authentication object, skipping claims mapping');
+    return!
   }
+  const connectionMethod = authentication.connection_method;
+  const connectionName = authentication.connection_name?.toLowerCase() || '';
 
   // If it's OAuth2
-  if (authentication?.connection_id || authentication.connection_method == 'oauth2') {
+  if (authentication?.connection_id || connectionMethod === 'oauth2') {
     console.log('Processing OAuth2 authentication...');
   }
 
   // Else if it's Entra ID but not OAuth2
   else if (
-    authentication.connection_name?.toLowerCase().includes('microsoft') ||
-    authentication.connection_name?.toLowerCase().includes('entra') ||
-    authentication.connection_name?.toLowerCase().includes('azure')
+    connectionName.includes('microsoft') ||
+    connectionName.includes('entra') ||
+    connectionName.includes('azure')
   ) {
     console.log('Processing Entra ID connection (non-OAuth2)');
   }
