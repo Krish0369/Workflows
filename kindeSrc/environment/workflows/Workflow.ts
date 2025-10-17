@@ -26,7 +26,7 @@ type SamlAttributeStatement = { attributes?: SamlAttribute[] };
 const attributeSyncConfig = [
     {
         shortName: "preferred_username",
-        kindeKey: "kp_usr_username",
+        kindeKey: "usr_username",
     },
     {
         shortName: "user_city",
