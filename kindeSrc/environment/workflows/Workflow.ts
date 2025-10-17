@@ -60,7 +60,7 @@ const attributeSyncConfig = [
     },
     {
         samlNames: ["preferred_username", "preferredusername"],
-        kindeKey: "kp_usr_username",
+        kindeKey: "usr_username",
         multiValue: false,
     },
     {
