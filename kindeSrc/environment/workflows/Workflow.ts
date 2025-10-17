@@ -44,7 +44,7 @@ export default async function handlePostAuth(event: onPostAuthenticationEvent) {
   if (preferredUsername) {
     updates["kp_usr_username"] = preferredUsername;
   }
-  const preferredUsername = getClaim("preferred_username");
+  const preferredUsername1 = getClaim("preferred_username");
   if (preferredUsername) {
     updates["usr_username"] = preferredUsername;
   }
