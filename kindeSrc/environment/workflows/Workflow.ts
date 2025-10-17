@@ -7,7 +7,7 @@ import {
 
 export const workflowSettings: WorkflowSettings = {
     id: "postAuthentication",
-    name: "MapPreferredUsername",
+    name: "MapPreferredUsernameToKinde",
     failurePolicy: {
         action: "stop",
     },
@@ -24,20 +24,35 @@ type SamlAttributeStatement = { attributes?: SamlAttribute[] };
 
 const attributeSyncConfig = [
     {
-        samlNames: ["preferred_username"],
-        kindeKey: "usr_username", // custom Kinde property
+        samlNames: ["preferred_username", "user.userprincipalname", "email"],
+        kindeKey: "kp_usr_username",
         multiValue: false,
     },
 ];
 
 export default async function handlePostAuth(event: onPostAuthenticationEvent) {
+    console.log("=== Post-authentication trigger fired ===");
+
     const protocol = event.context?.auth?.provider?.protocol;
-    if (!protocol || protocol !== "saml") return;
+    console.log("Detected protocol:", protocol);
+
+    if (!protocol || protocol !== "saml") {
+        console.log("Info: Skipping workflow — unsupported protocol:", protocol);
+        return;
+    }
+
+    console.log("Info: Processing SAML attributes for user:", event.context.user.id);
 
     const attributeStatements =
         event.context.auth.provider?.data?.assertion
             ?.attributeStatements as SamlAttributeStatement[] | undefined;
-    if (!attributeStatements?.length) return;
+
+    if (!attributeStatements?.length) {
+        console.log("Warning: No SAML attribute statements found");
+        return;
+    }
+
+    console.log("Info: Found SAML attribute statements:", JSON.stringify(attributeStatements, null, 2));
 
     const samlAttributesMap = (attributeStatements ?? [])
         .flatMap((statement) => statement.attributes ?? [])
@@ -49,6 +64,7 @@ export default async function handlePostAuth(event: onPostAuthenticationEvent) {
                     .filter((v): v is string => !!v);
                 if (values.length > 0) {
                     acc.set(name, values);
+                    console.log(`→ Found SAML attribute: ${name} = ${values.join(", ")}`);
                 }
             }
             return acc;
@@ -57,11 +73,14 @@ export default async function handlePostAuth(event: onPostAuthenticationEvent) {
     const propertiesToUpdate: Record<string, string> = {};
 
     for (const config of attributeSyncConfig) {
+        console.log(`Checking for attributes: ${config.samlNames.join(", ")}`);
+
         let foundValues: string[] | undefined;
         for (const name of config.samlNames) {
-            const values = samlAttributesMap.get(name);
+            const values = samlAttributesMap.get(name.toLowerCase());
             if (values && values.length > 0) {
                 foundValues = values;
+                console.log(`Matched ${name} → ${config.kindeKey} = ${values[0]}`);
                 break;
             }
         }
@@ -71,13 +90,24 @@ export default async function handlePostAuth(event: onPostAuthenticationEvent) {
         }
     }
 
-    if (Object.keys(propertiesToUpdate).length === 0) return;
+    if (Object.keys(propertiesToUpdate).length === 0) {
+        console.log("Info: No matching SAML attributes found to update");
+        return;
+    }
 
-    const kindeAPI = await createKindeAPI(event);
     const userId = event.context.user.id;
+    console.log("Preparing to update Kinde user:", userId);
+    console.log("Properties to update:", JSON.stringify(propertiesToUpdate, null, 2));
 
-    await kindeAPI.patch({
-        endpoint: `users/${userId}/properties`,
-        params: { properties: propertiesToUpdate },
-    });
+    try {
+        const kindeAPI = await createKindeAPI(event);
+        await kindeAPI.patch({
+            endpoint: `users/${userId}/properties`,
+            params: { properties: propertiesToUpdate },
+        });
+        console.log("✅ Successfully updated user properties in Kinde");
+    } catch (error) {
+        console.error("❌ Failed to update Kinde user properties:", error);
+        throw error;
+    }
 }
