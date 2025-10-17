@@ -5,17 +5,13 @@ import {
     createKindeAPI,
 } from "@kinde/infrastructure";
 
+
 export const workflowSettings: WorkflowSettings = {
-    id: "postAuthentication",
-    name: "MapPropertiesToKinde",
-    failurePolicy: {
-        action: "stop",
-    },
+    id: "mapPropertiesToKinde", // unique string
+    name: "mapPropertiesToKinde",
+    failurePolicy: { action: "stop" },
     trigger: WorkflowTrigger.PostAuthentication,
-    bindings: {
-        "kinde.env": {},
-        url: {},
-    },
+    bindings: { "kinde.env": {}, url: {} },
 };
 
 export default async function handlePostAuth(event: onPostAuthenticationEvent) {
