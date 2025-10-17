@@ -1,120 +1,55 @@
 import {
-    onPostAuthenticationEvent,
-    WorkflowSettings,
-    WorkflowTrigger,
-    createKindeAPI,
+  onPostAuthenticationEvent,
+  createKindeAPI,
 } from "@kinde/infrastructure";
 
-export const workflowSettings: WorkflowSettings = {
-    id: "postAuthentication",
-    name: "MapPreferredUsernameToKinde",
-    failurePolicy: {
-        action: "stop",
-    },
-    trigger: WorkflowTrigger.PostAuthentication,
-    bindings: {
-        "kinde.env": {},
-        url: {},
-    },
-};
-
-type SamlValue = { value?: string };
-type SamlAttribute = { name?: string; values?: SamlValue[] };
-type SamlAttributeStatement = { attributes?: SamlAttribute[] };
-
-const attributeSyncConfig = [
-    {
-        samlNames: [
-            "preferred_username",
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/preferred_username",
-            "http://schemas.microsoft.com/identity/claims/preferred_username",
-            "user.userprincipalname",
-            "email",
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
-        ],
-        kindeKey: "usr_username",
-        multiValue: false,
-    },
-];
-
 export default async function handlePostAuth(event: onPostAuthenticationEvent) {
-    console.log("=== Post-authentication trigger fired ===");
+  const protocol = event.context?.auth?.provider?.protocol;
+  if (!protocol || protocol !== "saml") {
+    console.info("Skipping workflow — unsupported protocol:", protocol);
+    return;
+  }
 
-    const protocol = event.context?.auth?.provider?.protocol;
-    console.log("Detected protocol:", protocol);
+  console.info("Processing SAML attributes for user:", event.request.user.id);
 
-    if (!protocol || protocol !== "saml") {
-        console.log("Info: Skipping workflow — unsupported protocol:", protocol);
-        return;
-    }
+  const attributes = event.context?.auth?.provider?.attributes || {};
+  if (!attributes || Object.keys(attributes).length === 0) {
+    console.info("No SAML attributes found");
+    return;
+  }
 
-    console.log("Info: Processing SAML attributes for user:", event.context.user.id);
+  // Helper to get claim by short or full URI form
+  const getClaim = (name: string) => {
+    return (
+      attributes[name] ||
+      attributes[`http://schemas.xmlsoap.org/ws/2005/05/identity/claims/${name}`]
+    );
+  };
 
-    const attributeStatements =
-        event.context.auth.provider?.data?.assertion
-            ?.attributeStatements as SamlAttributeStatement[] | undefined;
+  // Flexible claim mapping
+  const updates: Record<string, any> = {};
 
-    if (!attributeStatements?.length) {
-        console.log("Warning: No SAML attribute statements found");
-        return;
-    }
+  const preferredUsername = getClaim("preferred_username");
+  if (preferredUsername) {
+    updates["kp_usr_username"] = preferredUsername;
+  }
+  const preferredUsername = getClaim("preferred_username");
+  if (preferredUsername) {
+    updates["usr_username"] = preferredUsername;
+  }
+  const address = getClaim("User_City");
+  if (address) {
+    updates["kp_usr_city"] = address;
+  }
 
-    console.log("Info: Found SAML attribute statements:", JSON.stringify(attributeStatements, null, 2));
+  if (Object.keys(updates).length === 0) {
+    console.info("No properties to update");
+    return;
+  }
 
-    const samlAttributesMap = (attributeStatements ?? [])
-        .flatMap((statement) => statement.attributes ?? [])
-        .reduce((acc, attr) => {
-            const name = attr.name?.toLowerCase().trim();
-            if (name) {
-                const values = (attr.values ?? [])
-                    .map((v) => v.value?.trim())
-                    .filter((v): v is string => !!v);
-                if (values.length > 0) {
-                    acc.set(name, values);
-                    console.log(`→ Found SAML attribute: ${name} = ${values.join(", ")}`);
-                }
-            }
-            return acc;
-        }, new Map<string, string[]>());
+  // Update Kinde user
+  const api = createKindeAPI(event);
+  await api.users.update(event.request.user.id, updates);
 
-    const propertiesToUpdate: Record<string, string> = {};
-
-    for (const config of attributeSyncConfig) {
-        console.log(`Checking for attributes: ${config.samlNames.join(", ")}`);
-
-        let foundValues: string[] | undefined;
-        for (const name of config.samlNames) {
-            const values = samlAttributesMap.get(name.toLowerCase());
-            if (values && values.length > 0) {
-                foundValues = values;
-                console.log(`Matched ${name} → ${config.kindeKey} = ${values[0]}`);
-                break;
-            }
-        }
-
-        if (foundValues) {
-            propertiesToUpdate[config.kindeKey] = foundValues[0];
-        }
-    }
-
-    if (Object.keys(propertiesToUpdate).length === 0) {
-        console.log("Info: No matching SAML attributes found to update");
-        return;
-    }
-
-    const userId = event.context.user.id;
-    console.log("Preparing to update Kinde user:", userId);
-    console.log("Properties to update:", JSON.stringify(propertiesToUpdate, null, 2));
-
-    try {
-        const kindeAPI = await createKindeAPI(event);
-        await kindeAPI.patch({
-            endpoint: `users/${userId}/properties`,
-            params: { properties: propertiesToUpdate },
-        });
-        console.log("✅ Successfully updated user properties in Kinde");
-    } catch (error) {
-        console.error("❌ Failed to update Kinde user properties:", error);
-        throw error;
-    }
+  console.info("Updated user properties:", updates);
 }
