@@ -7,7 +7,7 @@ import {
 
 
 export const workflowSettings: WorkflowSettings = {
-    id: "mapPropertiesToKinde", // unique string
+    id: "postAuthentication", // unique string
     name: "mapPropertiesToKinde",
     failurePolicy: { action: "stop" },
     trigger: WorkflowTrigger.PostAuthentication,
