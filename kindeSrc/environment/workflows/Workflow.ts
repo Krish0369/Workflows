@@ -32,7 +32,7 @@ const attributeSyncConfig = [
             "email",
             "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
         ],
-        kindeKey: "kp_usr_username",
+        kindeKey: "usr_username",
         multiValue: false,
     },
 ];
