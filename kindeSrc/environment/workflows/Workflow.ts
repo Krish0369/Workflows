@@ -7,7 +7,7 @@ import {
 
 export const workflowSettings: WorkflowSettings = {
     id: "postAuthentication",
-    name: "MapPreferredUsernameToKinde",
+    name: "MapPropertiesToKinde",
     failurePolicy: {
         action: "stop",
     },
