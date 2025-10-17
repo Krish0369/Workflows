@@ -1,7 +1,22 @@
 import {
-  onPostAuthenticationEvent,
-  createKindeAPI,
+    onPostAuthenticationEvent,
+    WorkflowSettings,
+    WorkflowTrigger,
+    createKindeAPI,
 } from "@kinde/infrastructure";
+
+export const workflowSettings: WorkflowSettings = {
+    id: "postAuthentication",
+    name: "MapPreferredUsernameToKinde",
+    failurePolicy: {
+        action: "stop",
+    },
+    trigger: WorkflowTrigger.PostAuthentication,
+    bindings: {
+        "kinde.env": {},
+        url: {},
+    },
+};
 
 export default async function handlePostAuth(event: onPostAuthenticationEvent) {
   const protocol = event.context?.auth?.provider?.protocol;
