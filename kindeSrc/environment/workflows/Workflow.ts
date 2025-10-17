@@ -24,7 +24,14 @@ type SamlAttributeStatement = { attributes?: SamlAttribute[] };
 
 const attributeSyncConfig = [
     {
-        samlNames: ["preferred_username", "user.userprincipalname", "email"],
+        samlNames: [
+            "preferred_username",
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/preferred_username",
+            "http://schemas.microsoft.com/identity/claims/preferred_username",
+            "user.userprincipalname",
+            "email",
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+        ],
         kindeKey: "kp_usr_username",
         multiValue: false,
     },
