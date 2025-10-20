@@ -2,7 +2,6 @@ import {
   onPostAuthenticationEvent,
   WorkflowSettings,
   WorkflowTrigger,
-  createKindeAPI,
   denyAccess,
 } from "@kinde/infrastructure";
 
@@ -24,7 +23,7 @@ export const workflowSettings: WorkflowSettings = {
 export default async function handlePostAuth(event: onPostAuthenticationEvent) {
   const { auth, user } = event.context;
 
-  // Only enforce for your SAML connection
+  // Only enforce for your specific SAML connection
   if (auth.connectionId === 'conn_01995a629a9d26f6882c80c3ee5648a8') {
     const groups = extractGroupsAttribute(event);
     const isNewKindeUser = auth.isNewUserRecordCreated;
@@ -33,21 +32,14 @@ export default async function handlePostAuth(event: onPostAuthenticationEvent) {
     console.debug('Is New Kinde User:', isNewKindeUser);
 
     if (isNewKindeUser && (!groups || !groups.includes('87dd713c-440e-43df-8a31-abb3387c62b2'))) {
-      console.warn(`Blocking new user ${user.id} due to missing group`);
+      console.warn(`Blocking access for new user ${user.id} due to missing group`);
 
-      try {
-        // Disable the user immediately
-        await createKindeAPI().users.update(user.id, { active: false });
-      } catch (err) {
-        console.error('Error disabling new user:', err);
-      }
-
-      // Deny access and show custom message
+      // Show custom message instead of Error 2201
       return denyAccess('Your organization has not granted you access. Please contact your IT administrator to request access.');
     }
   }
 
-  // Other unrelated post-auth checks can continue here...
+  // Other post-auth checks can continue here...
 }
 
 // Helper: extract group claims from SAML provider
