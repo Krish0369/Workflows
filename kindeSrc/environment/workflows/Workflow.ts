@@ -4,10 +4,9 @@ import {
   WorkflowTrigger,
 } from "@kinde/infrastructure";
 
-// Workflow settings
 export const workflowSettings: WorkflowSettings = {
   id: "postAuthentication",
-  name: "Post user auth access control with redirect",
+  name: "Post user auth access control with denial message",
   failurePolicy: { action: "stop" },
   trigger: WorkflowTrigger.PostAuthentication,
   bindings: {
@@ -33,16 +32,14 @@ export default async function handlePostAuth(event: onPostAuthenticationEvent) {
     if (isNewKindeUser && (!groups || !groups.includes('87dd713c-440e-43df-8a31-abb3387c62b2'))) {
       console.warn(`Blocking access for new user ${user.id} due to missing group`);
 
-      // Redirect to a custom Access Denied page with a friendly message
-      return {
-        redirect: `/access-denied?msg=${encodeURIComponent(
-          'Your organization has not granted you access. Please contact your IT administrator to request access.'
-        )}`,
-      };
+      // ✅ Deny access with a custom friendly error message
+      return event.denyAccess(
+        'Your organisation has not granted you access. Please contact your IT administrator to request access.'
+      );
     }
   }
 
-  // Other post-auth checks can continue here...
+  // Continue normally if allowed
 }
 
 // Helper: extract group claims from SAML provider
