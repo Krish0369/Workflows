@@ -7,10 +7,10 @@ import {
 
 // Workflow settings
 export const workflowSettings: WorkflowSettings = {
-  id: "preRegistration",
+  id: "preUserCheck",
   name: "Pre-user creation access check",
   failurePolicy: { action: "stop" },
-  trigger: "user:pre_registration",
+  trigger: WorkflowTrigger.PreUserCreation,
   bindings: {
     "kinde.auth": {},
     "kinde.env": {},
