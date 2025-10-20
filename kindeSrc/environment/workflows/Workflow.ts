@@ -58,6 +58,4 @@ function extractGroupsAttribute(event: onPostAuthenticationEvent): string[] | nu
     console.error('Error extracting group claims attribute', error);
     return null;
   }
-}```
-
-what this work flow does. explain
+}
