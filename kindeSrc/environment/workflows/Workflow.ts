@@ -7,7 +7,7 @@ import {
 
 // Workflow settings
 export const workflowSettings: WorkflowSettings = {
-  id: "preUserCheck",
+  id: "preRegistration",
   name: "Pre-user creation access check",
   failurePolicy: { action: "stop" },
   trigger: WorkflowTrigger.PreUserCreation,
