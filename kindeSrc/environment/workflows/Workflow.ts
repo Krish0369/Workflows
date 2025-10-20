@@ -1,5 +1,5 @@
 import {
-  onPostAuthenticationEvent,
+  onPreUserCreationEvent,
   WorkflowSettings,
   WorkflowTrigger,
   denyAccess,
@@ -7,52 +7,46 @@ import {
 
 // Workflow settings
 export const workflowSettings: WorkflowSettings = {
-  id: "postAuthentication",
-  name: "Post user auth",
+  id: "preUserCreation",
+  name: "Pre-user creation access check",
   failurePolicy: { action: "stop" },
-  trigger: WorkflowTrigger.PostAuthentication,
+  trigger: WorkflowTrigger.PreUserCreation,
   bindings: {
     "kinde.auth": {},
     "kinde.env": {},
     "kinde.fetch": {},
-    "kinde.mfa": {},
-    url: {},
   },
 };
 
-// Main post-authentication workflow
-export default async function handlePostAuth(event: onPostAuthenticationEvent): Promise<void> {
+// Main workflow
+export default async function handlePreUserCreation(event: onPreUserCreationEvent): Promise<void> {
   try {
     const { auth } = event.context;
-    const { connectionId, isNewUserRecordCreated: isNewKindeUser } = auth;
+    const connectionId = auth.connectionId;
 
     console.debug('Connection ID:', connectionId);
-    console.debug('Is New Kinde User:', isNewKindeUser);
 
-    // Only apply access restriction for a specific connection (optional)
-    // Remove this if you want to enforce for all connections
+    // Enforce only for the provided connection ID
     if (connectionId === 'conn_01995a629a9d26f6882c80c3ee5648a8') {
       const groups = extractGroupsAttribute(event);
       console.debug('Groups Attribute:', groups);
 
-      // Deny access if new user has no required group
-      if (isNewKindeUser && (!groups || !groups.includes('87dd713c-440e-43df-8a31-abb3387c62b2'))) {
-        // Important: return denyAccess to prevent further execution
+      // Deny access if user has no groups or missing required group
+      if (!groups || !groups.includes('87dd713c-440e-43df-8a31-abb3387c62b2')) {
+        // Prevent user creation and show error message
         return denyAccess('Your organization has not granted you access. Please contact your IT administrator to request access.');
       }
     }
 
-    // Other post-authentication checks can go here...
-
+    // Otherwise, user creation proceeds as normal
   } catch (error) {
-    console.error('Post-authentication workflow failed', error);
-    // Fail gracefully with a user-friendly message
+    console.error('Pre-user creation workflow failed', error);
     return denyAccess('Your organization has not granted you access. Please contact your IT administrator to request access.');
   }
 }
 
 // Helper: extract group claims from SAML provider
-function extractGroupsAttribute(event: onPostAuthenticationEvent): string[] | null {
+function extractGroupsAttribute(event: onPreUserCreationEvent): string[] | null {
   try {
     const provider = (event.context as any).auth?.provider;
     if (provider?.protocol === 'saml' && provider?.data?.assertion?.attributeStatements) {
