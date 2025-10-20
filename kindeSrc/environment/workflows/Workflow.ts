@@ -27,8 +27,8 @@ export default async function mapEntraIdClaimsWorkflow(
   console.log("Event data:", JSON.stringify(event, null, 2));
 
   // Only process OAuth2 connections from Entra ID (Microsoft)
-  if (protocol !== "oauth2") {
-    console.log("Not an OAuth2 authentication, skipping claims mapping");
+  if (protocol !== "saml") {
+    console.log("Not an Entra authentication, skipping claims mapping");
     return;
   }
 
