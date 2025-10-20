@@ -22,7 +22,7 @@ export const workflowSettings: WorkflowSettings = {
 
 export default async function handlePostAuth(event: onPostAuthenticationEvent): Promise<void> {
   const { auth } = event.context;
-  if (auth.connectionId === 'conn_0199b75aebb0583f2b8c19255b7c3adb') {
+  if (auth.connectionId === 'conn_01995a629a9d26f6882c80c3ee5648a8') {
     const groups = extractGroupsAttribute(event);
     const isNewKindeUser = auth.isNewUserRecordCreated;
 
