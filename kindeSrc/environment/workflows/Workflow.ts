@@ -1,64 +1,114 @@
 import {
-  onPostAuthenticationEvent,
   WorkflowSettings,
   WorkflowTrigger,
+  createKindeAPI,
 } from "@kinde/infrastructure";
 
 export const workflowSettings: WorkflowSettings = {
-  id: "postAuthentication",
-  name: "Post user auth access control with denial message",
-  failurePolicy: { action: "stop" },
+  id: "mapEntraIdClaims",
+  name: "MapEntraIdClaims",
+  failurePolicy: {
+    action: "stop",
+  },
   trigger: WorkflowTrigger.PostAuthentication,
   bindings: {
-    "kinde.auth": {},
     "kinde.env": {},
-    "kinde.fetch": {},
-    "kinde.mfa": {},
     url: {},
+    "kinde.mfa": {}
   },
 };
 
-export default async function handlePostAuth(event: onPostAuthenticationEvent) {
-  const { auth, user } = event.context;
+export default async function mapEntraIdClaimsWorkflow(
+  event: any
+) {
+  const provider = event.context?.auth?.provider;
+  const protocol = provider?.protocol || "";
 
-  // Only enforce for your specific SAML connection
-  if (auth.connectionId === 'conn_01995a629a9d26f6882c80c3ee5648a8') {
-    const groups = extractGroupsAttribute(event);
-    const isNewKindeUser = auth.isNewUserRecordCreated;
+  console.log("Event data:", JSON.stringify(event, null, 2));
 
-    console.debug('Groups Attribute:', groups);
-    console.debug('Is New Kinde User:', isNewKindeUser);
+  // Only process OAuth2 connections from Entra ID (Microsoft)
+  if (protocol !== "oauth2") {
+    console.log("Not an OAuth2 authentication, skipping claims mapping");
+    return;
+  }
 
-    if (isNewKindeUser && (!groups || !groups.includes('87dd713c-440e-43df-8a31-abb3387c62b2'))) {
-      console.warn(`Blocking access for new user ${user.id} due to missing group`);
+  // Check if this is a Microsoft/Entra ID connection
+  const providerName =
+    provider?.provider?.toLowerCase() ||
+    "";
 
-      // ✅ Deny access with a custom friendly error message
-      return event.denyAccess(
-        'Your organisation has not granted you access. Please contact your IT administrator to request access.'
+  if (
+    !providerName.includes("microsoft") &&
+    !providerName.includes("entra") &&
+    !providerName.includes("azure") &&
+    !providerName.includes("azure_ad")
+  ) {
+    console.log(
+      `Connection ${providerName} is not a Microsoft/Entra ID connection, skipping`
+    );
+    return;
+  }
+
+  const userId = event.context?.user?.id;
+  console.log(`Processing Entra ID OAuth2 claims for user: ${userId}`);
+
+  // Extract claims
+  const claims = provider?.data?.idToken?.claims || {};
+  console.log("Raw claims received:", claims);
+
+  // Map of Entra ID claims -> Kinde properties
+  // Some are examples; adjust based on your needs
+  const claimMappings: Record<string, string> = {
+
+    preferred_username: "usr_username",  
+    city: "kp_usr_city",
+
+  };
+
+  const propertiesToUpdate: Record<string, string> = {};
+
+  // Map claims to properties
+  for (const [claimName, propertyKey] of Object.entries(claimMappings)) {
+    const claimValue = claims[claimName];
+    if (claimValue) {
+      propertiesToUpdate[propertyKey] = Array.isArray(claimValue)
+        ? claimValue.join(", ")
+        : String(claimValue);
+      console.log(
+        `Mapping claim ${claimName} -> ${propertyKey}: ${propertiesToUpdate[propertyKey]}`
       );
     }
   }
 
-  // Continue normally if allowed
-}
-
-// Helper: extract group claims from SAML provider
-function extractGroupsAttribute(event: onPostAuthenticationEvent): string[] | null {
-  try {
-    const provider = (event.context as any).auth?.provider;
-
-    if (provider?.protocol === 'saml' && provider?.data?.assertion?.attributeStatements) {
-      for (const statement of provider.data.assertion.attributeStatements) {
-        const groups = statement.attributes
-          ?.find(attr => attr.name?.toLowerCase().endsWith('/claims/groups'))
-          ?.values?.map((v: any) => v?.value) ?? null;
-        if (groups) return groups;
-      }
-    }
-
-    return null;
-  } catch (err) {
-    console.error('Error extracting group claims attribute', err);
-    return null;
+  // Add groups if present
+  if (Array.isArray(claims.groups)) {
+    propertiesToUpdate["entra_groups"] = claims.groups.join(", ");
   }
+
+  // Always store last sync timestamp
+  propertiesToUpdate["entra_last_sync"] = new Date().toISOString();
+
+  // Nothing to update
+  if (Object.keys(propertiesToUpdate).length === 0) {
+    console.log("No properties to update");
+    return;
+  }
+
+  // Create the Kinde API client (uses your M2M credentials)
+  const kindeAPI = await createKindeAPI(event);
+
+  try {
+    await kindeAPI.patch({
+      endpoint: `users/${userId}/properties`,
+      params: { properties: propertiesToUpdate },
+    });
+
+    console.log(
+      `Successfully updated ${Object.keys(propertiesToUpdate).length} properties for user ${userId}`
+    );
+  } catch (error) {
+    console.error("Error updating user properties:", error);
+  }
+
+  console.log(`Completed Entra ID claims mapping for user ${userId}`);
 }
