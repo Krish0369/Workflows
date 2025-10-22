@@ -64,10 +64,7 @@ export default async function mapEntraIdClaimsWorkflow(
   // Map of Entra ID claims -> Kinde properties
   // Some are examples; adjust based on your needs
   const claimMappings: Record<string, string> = {
-    given_name: "kp_usr_first_name",
-    family_name: "kp_usr_last_name",
-    email: "kp_usr_email",
-    preferred_username: "usr_username",
+    preferred_username: "preferred_username",
 
   };
 
