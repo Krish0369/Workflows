@@ -19,8 +19,8 @@ export default async function Workflow(event) {
   const username = event?.context?.auth?.suppliedUsername;
   console.log("Supplied username:", username);
 
-  if (username === "root") {
-    console.log("Username 'root' is not allowed — denying authentication.");
+  if (username === "notgood") {
+    console.log("Username 'notgood' is not allowed — denying authentication.");
     return { auth: { action: "deny" } };
   }
 
