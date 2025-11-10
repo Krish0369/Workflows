@@ -12,18 +12,7 @@ export const workflowSettings = {
   },
 };
 
-export default async function Workflow(event) {
-  console.log("Workflow triggered: onUsernameProvided");
-  console.log("Event received:", JSON.stringify(event, null, 2));
-
-  const username = event?.context?.auth?.suppliedUsername;
-  console.log("Supplied username:", username);
-
-  if (username === "notgood") {
-    console.log("Username 'notgood' is not allowed — denying authentication.");
-    return { auth: { action: "deny" } };
-  }
-
-  console.log("Username validated successfully — continuing workflow.");
-  return { auth: { action: "allow" } };
+export default async function Workflow(event: any) {
+  console.log("Triggering intentional workflow error...");
+  throw new Error("Intentional test failure for workflow handling");
 }
