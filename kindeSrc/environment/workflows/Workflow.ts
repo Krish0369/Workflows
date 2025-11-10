@@ -38,8 +38,8 @@ export default async function Workflow(event) {
   console.log("User organization:", orgCode);
 
   // Only apply rule for org1
-  if (orgCode !== "org_7fad7267825b") {
-    console.log("Not TestOrg. Skipping username validation.");
+  if (orgCode !== "TestOrg") {
+    console.log(orgcode,"Not TestOrg. Skipping username validation.");
     return;
   }
 
