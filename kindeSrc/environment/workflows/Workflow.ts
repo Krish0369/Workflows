@@ -12,18 +12,20 @@ export const workflowSettings = {
   },
 };
 
-export default async function Workflow(event) {
-  console.log("Workflow triggered: onUsernameProvided");
-  console.log("Event received:", JSON.stringify(event, null, 2));
+export default async function Workflow(event: any) {
+console.log("Workflow triggered: onUsernameProvided");
+console.log("Event received:", JSON.stringify(event, null, 2));
 
-  const username = event?.context?.auth?.suppliedUsername;
-  console.log("Supplied username:", username);
+const banned = ["admin", "root", "test"];
+console.log("Banned usernames:", banned);
 
-  if (username === "notgood") {
-    console.log("Username 'notgood' is not allowed — denying authentication.");
-    return { auth: { action: "deny" } };
-  }
+const username = event?.context?.auth?.suppliedUsername;
+console.log("Extracted username:", username);
 
-  console.log("Username validated successfully — continuing workflow.");
-  return { auth: { action: "allow" } };
+if (banned.includes(username)) {
+console.log("Username is banned. Invalidating form field.");
+invalidateFormField("p_username", "This username is not allowed.");
+} else {
+console.log("Username is allowed.");
+}
 }
