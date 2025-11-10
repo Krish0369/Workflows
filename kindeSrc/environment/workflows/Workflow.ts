@@ -8,7 +8,7 @@ export const workflowSettings = {
     action: "stop",
   },
   bindings: {
-    "kinde.widget": {}, // Required for accessing the UI
+    "kinde.widget": {},
   },
 };
 
@@ -18,9 +18,11 @@ export default async function Workflow(event: any) {
 
   const banned = ["admin", "root", "test"];
   console.log("Banned usernames:", banned);
-  console.log("Username supplied by user:", event.suppliedUsername);
 
-  if (banned.includes(event.suppliedUsername)) {
+  const username = event?.context?.auth?.suppliedUsername;
+  console.log("Extracted username:", username);
+
+  if (banned.includes(username)) {
     console.log("Username is banned. Invalidating form field.");
     invalidateFormField("p_username", "This username is not allowed.");
   } else {
