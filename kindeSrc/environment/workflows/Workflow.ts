@@ -17,7 +17,7 @@ export const workflowSettings = {
 //export default async function Workflow(event: any) {
 	//invalidateFormField('p_username', 'username format sucks, do better!')
 //}
-export default async function Workflow(event) {
+export default async function Workflow(event: any) {
   const banned = ["admin", "root", "test"];
   if (banned.includes(event.suppliedUsername)) {
     invalidateFormField("p_username", "This username is not allowed.");
