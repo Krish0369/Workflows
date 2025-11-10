@@ -18,8 +18,6 @@ export default async function Workflow(event) {
 
   const username = event?.context?.auth?.suppliedUsername;
   console.log("Supplied username:", username);
-  console.log("IP:", event.request?.ip);
-  console.log("UA:", event.request?.userAgent);
 
   if (username === "notgood") {
     console.log("Username 'notgood' is not allowed — denying authentication.");
