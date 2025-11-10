@@ -12,7 +12,7 @@ export const workflowSettings = {
   },
 };
 
-export default async function Workflow(event:any) {
+export default async function Workflow(event) {
   console.log("Workflow triggered: onUsernameProvided");
   console.log("Event received:", JSON.stringify(event, null, 2));
 
