@@ -4,8 +4,8 @@ import {
 } from "@kinde/infrastructure";
 
 export const workflowSettings: WorkflowSettings = {
-  id: "inspectEntraAccessToken",
-  name: "InspectEntraAccessToken",
+  id: "inspectEntraProviderTokens",
+  name: "InspectEntraProviderTokens",
   failurePolicy: {
     action: "stop",
   },
@@ -16,14 +16,14 @@ export const workflowSettings: WorkflowSettings = {
   },
 };
 
-export default async function inspectEntraAccessToken(event: any) {
-  console.log("========== TOKEN INSPECTION START ==========");
+export default async function inspectEntraProviderTokens(event: any) {
+  console.log("========== ENTRA TOKEN INSPECTION START ==========");
 
   const providerData =
     event.context?.auth?.provider?.data;
 
   if (!providerData) {
-    console.log("❌ No provider data");
+    console.log("❌ No provider data found");
     return;
   }
 
@@ -32,7 +32,50 @@ export default async function inspectEntraAccessToken(event: any) {
     Object.keys(providerData)
   );
 
+
+  // Inspect ID token
+  const idToken = providerData.idToken;
+
+  console.log("----- ID TOKEN -----");
+  console.log(
+    "idToken type:",
+    typeof idToken
+  );
+
+  console.log(
+    "idToken keys:",
+    idToken && typeof idToken === "object"
+      ? Object.keys(idToken)
+      : "not object"
+  );
+
+  if (idToken?.claims) {
+    console.log(
+      "ID token claims keys:",
+      Object.keys(idToken.claims)
+    );
+
+    console.log(
+      "Sample claims:",
+      JSON.stringify(
+        {
+          name: idToken.claims.name,
+          email: idToken.claims.email,
+          preferred_username:
+            idToken.claims.preferred_username,
+          oid: idToken.claims.oid,
+        },
+        null,
+        2
+      )
+    );
+  }
+
+
+  // Inspect access token
   const accessToken = providerData.accessToken;
+
+  console.log("----- ACCESS TOKEN -----");
 
   console.log(
     "accessToken type:",
@@ -40,16 +83,18 @@ export default async function inspectEntraAccessToken(event: any) {
   );
 
   console.log(
-    "accessToken value keys:",
-    typeof accessToken === "object"
+    "accessToken keys:",
+    accessToken &&
+      typeof accessToken === "object"
       ? Object.keys(accessToken)
       : "not object"
   );
 
   console.log(
-    "accessToken value:",
+    "accessToken JSON:",
     JSON.stringify(accessToken, null, 2)
   );
 
-  console.log("========== TOKEN INSPECTION END ==========");
+
+  console.log("========== ENTRA TOKEN INSPECTION END ==========");
 }
