@@ -4,8 +4,8 @@ import {
 } from "@kinde/infrastructure";
 
 export const workflowSettings: WorkflowSettings = {
-  id: "testEntraGraphAccess",
-  name: "TestEntraGraphAccess",
+  id: "inspectEntraAccessToken",
+  name: "InspectEntraAccessToken",
   failurePolicy: {
     action: "stop",
   },
@@ -16,95 +16,40 @@ export const workflowSettings: WorkflowSettings = {
   },
 };
 
-function decodeJwtPayload(token: string) {
-  try {
-    const payload = token.split(".")[1];
+export default async function inspectEntraAccessToken(event: any) {
+  console.log("========== TOKEN INSPECTION START ==========");
 
-    if (!payload) {
-      return null;
-    }
+  const providerData =
+    event.context?.auth?.provider?.data;
 
-    // JWT uses base64url
-    const base64 = payload
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
-
-    const decodedPayload = Buffer.from(
-      base64,
-      "base64"
-    ).toString("utf8");
-
-    return JSON.parse(decodedPayload);
-
-  } catch (error) {
-    console.log("JWT decode error:", String(error));
-    return null;
-  }
-}
-
-export default async function testEntraGraphAccess(event: any) {
-  console.log("========== ENTRA GRAPH TEST START ==========");
-
-  const accessToken =
-    event.context?.auth?.provider?.data?.accessToken;
-
-  if (!accessToken) {
-    console.log("❌ No access token found");
+  if (!providerData) {
+    console.log("❌ No provider data");
     return;
   }
 
-  console.log("✅ accessToken found");
   console.log(
-    "Token length:",
-    accessToken.length
+    "Provider data keys:",
+    Object.keys(providerData)
   );
 
-  const tokenPayload = decodeJwtPayload(accessToken);
+  const accessToken = providerData.accessToken;
 
-  if (tokenPayload) {
-    console.log("----- TOKEN CLAIMS -----");
-    console.log("aud:", tokenPayload.aud);
-    console.log("scp:", tokenPayload.scp);
-    console.log("roles:", tokenPayload.roles);
-    console.log("iss:", tokenPayload.iss);
-    console.log("------------------------");
-  } else {
-    console.log("❌ Could not decode JWT payload");
-  }
+  console.log(
+    "accessToken type:",
+    typeof accessToken
+  );
 
+  console.log(
+    "accessToken value keys:",
+    typeof accessToken === "object"
+      ? Object.keys(accessToken)
+      : "not object"
+  );
 
-  console.log("Calling Graph...");
+  console.log(
+    "accessToken value:",
+    JSON.stringify(accessToken, null, 2)
+  );
 
-  try {
-    const response = await fetch(
-      "https://graph.microsoft.com/v1.0/me",
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      }
-    );
-
-    console.log(
-      "Graph status:",
-      response.status
-    );
-
-    const body = await response.text();
-
-    console.log(
-      "Graph response:",
-      body
-    );
-
-  } catch (error) {
-    console.log(
-      "Graph fetch exception:",
-      JSON.stringify(error, null, 2)
-    );
-  }
-
-  console.log("========== ENTRA GRAPH TEST END ==========");
+  console.log("========== TOKEN INSPECTION END ==========");
 }
