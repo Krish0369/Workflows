@@ -4,8 +4,8 @@ import {
 } from "@kinde/infrastructure";
 
 export const workflowSettings: WorkflowSettings = {
-  id: "checkEntraTokens",
-  name: "CheckEntraTokens",
+  id: "testEntraGraphAccess",
+  name: "TestEntraGraphAccess",
   failurePolicy: {
     action: "stop",
   },
@@ -16,44 +16,86 @@ export const workflowSettings: WorkflowSettings = {
   },
 };
 
-export default async function checkEntraTokens(event: any) {
+export default async function testEntraGraphAccess(event: any) {
+  console.log("========== ENTRA GRAPH TEST START ==========");
+
   const provider = event.context?.auth?.provider;
 
   console.log("Provider:", provider?.provider);
   console.log("Protocol:", provider?.protocol);
 
-  const providerData = provider?.data || {};
+  const accessToken = provider?.data?.accessToken;
 
-  // Show available fields only
-  console.log(
-    "Provider data keys:",
-    Object.keys(providerData)
-  );
+  if (!accessToken) {
+    console.log("❌ No accessToken found in provider data");
+    return;
+  }
 
-  // Check token availability
-  console.log(
-    "Has ID token:",
-    !!providerData.idToken
-  );
+  console.log("✅ accessToken found");
 
-  console.log(
-    "Has access token:",
-    !!providerData.accessToken
-  );
+  // Decode token payload for debugging
+  try {
+    const payload = accessToken.split(".")[1];
 
-  console.log(
-    "Has refresh token:",
-    !!providerData.refreshToken
-  );
+    const decoded = JSON.parse(
+      Buffer.from(payload, "base64").toString("utf8")
+    );
 
-  // Also check snake_case possibility
-  console.log(
-    "Has access_token:",
-    !!providerData.access_token
-  );
+    console.log("----- TOKEN DETAILS -----");
+    console.log("Audience:", decoded.aud);
+    console.log("Scopes:", decoded.scp);
+    console.log("Roles:", decoded.roles);
+    console.log("Issuer:", decoded.iss);
+    console.log("-------------------------");
 
-  console.log(
-    "Has refresh_token:",
-    !!providerData.refresh_token
-  );
+  } catch (error) {
+    console.log("⚠️ Unable to decode access token");
+  }
+
+
+  console.log("Calling Microsoft Graph /me endpoint...");
+
+  try {
+    const response = await fetch(
+      "https://graph.microsoft.com/v1.0/me",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    console.log("Graph HTTP status:", response.status);
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.log("❌ Graph API Error:");
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
+    console.log("✅ Graph API Success");
+
+    console.log(
+      JSON.stringify(
+        {
+          id: result.id,
+          displayName: result.displayName,
+          userPrincipalName: result.userPrincipalName,
+          mail: result.mail,
+        },
+        null,
+        2
+      )
+    );
+
+  } catch (error) {
+    console.log("❌ Graph request failed:");
+    console.log(error);
+  }
+
+  console.log("========== ENTRA GRAPH TEST END ==========");
 }
