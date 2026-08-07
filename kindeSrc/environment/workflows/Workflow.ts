@@ -16,44 +16,64 @@ export const workflowSettings: WorkflowSettings = {
   },
 };
 
+function decodeJwtPayload(token: string) {
+  try {
+    const payload = token.split(".")[1];
+
+    if (!payload) {
+      return null;
+    }
+
+    // JWT uses base64url
+    const base64 = payload
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+
+    const decodedPayload = Buffer.from(
+      base64,
+      "base64"
+    ).toString("utf8");
+
+    return JSON.parse(decodedPayload);
+
+  } catch (error) {
+    console.log("JWT decode error:", String(error));
+    return null;
+  }
+}
+
 export default async function testEntraGraphAccess(event: any) {
   console.log("========== ENTRA GRAPH TEST START ==========");
 
-  const provider = event.context?.auth?.provider;
-
-  console.log("Provider:", provider?.provider);
-  console.log("Protocol:", provider?.protocol);
-
-  const accessToken = provider?.data?.accessToken;
+  const accessToken =
+    event.context?.auth?.provider?.data?.accessToken;
 
   if (!accessToken) {
-    console.log("❌ No accessToken found in provider data");
+    console.log("❌ No access token found");
     return;
   }
 
   console.log("✅ accessToken found");
+  console.log(
+    "Token length:",
+    accessToken.length
+  );
 
-  // Decode token payload for debugging
-  try {
-    const payload = accessToken.split(".")[1];
+  const tokenPayload = decodeJwtPayload(accessToken);
 
-    const decoded = JSON.parse(
-      Buffer.from(payload, "base64").toString("utf8")
-    );
-
-    console.log("----- TOKEN DETAILS -----");
-    console.log("Audience:", decoded.aud);
-    console.log("Scopes:", decoded.scp);
-    console.log("Roles:", decoded.roles);
-    console.log("Issuer:", decoded.iss);
-    console.log("-------------------------");
-
-  } catch (error) {
-    console.log("⚠️ Unable to decode access token");
+  if (tokenPayload) {
+    console.log("----- TOKEN CLAIMS -----");
+    console.log("aud:", tokenPayload.aud);
+    console.log("scp:", tokenPayload.scp);
+    console.log("roles:", tokenPayload.roles);
+    console.log("iss:", tokenPayload.iss);
+    console.log("------------------------");
+  } else {
+    console.log("❌ Could not decode JWT payload");
   }
 
 
-  console.log("Calling Microsoft Graph /me endpoint...");
+  console.log("Calling Graph...");
 
   try {
     const response = await fetch(
@@ -67,34 +87,23 @@ export default async function testEntraGraphAccess(event: any) {
       }
     );
 
-    console.log("Graph HTTP status:", response.status);
+    console.log(
+      "Graph status:",
+      response.status
+    );
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.log("❌ Graph API Error:");
-      console.log(JSON.stringify(result, null, 2));
-      return;
-    }
-
-    console.log("✅ Graph API Success");
+    const body = await response.text();
 
     console.log(
-      JSON.stringify(
-        {
-          id: result.id,
-          displayName: result.displayName,
-          userPrincipalName: result.userPrincipalName,
-          mail: result.mail,
-        },
-        null,
-        2
-      )
+      "Graph response:",
+      body
     );
 
   } catch (error) {
-    console.log("❌ Graph request failed:");
-    console.log(error);
+    console.log(
+      "Graph fetch exception:",
+      JSON.stringify(error, null, 2)
+    );
   }
 
   console.log("========== ENTRA GRAPH TEST END ==========");
