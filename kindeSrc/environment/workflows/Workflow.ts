@@ -1,59 +1,59 @@
-import { invalidateFormField } from "@kinde/infrastructure";
+import {
+  WorkflowSettings,
+  WorkflowTrigger,
+} from "@kinde/infrastructure";
 
-export const workflowSettings = {
-  id: "onUsernameProvided",
-  name: "Validate username",
-  trigger: "user:new_username_provided",
+export const workflowSettings: WorkflowSettings = {
+  id: "checkEntraTokens",
+  name: "CheckEntraTokens",
   failurePolicy: {
     action: "stop",
   },
+  trigger: WorkflowTrigger.PostAuthentication,
   bindings: {
-    "kinde.widget": {},
+    "kinde.env": {},
+    "url": {},
   },
 };
 
-// export default async function Workflow(event: any) {
-// console.log("Workflow triggered: onUsernameProvided");
-// console.log("Event received:", JSON.stringify(event, null, 2));
+export default async function checkEntraTokens(event: any) {
+  const provider = event.context?.auth?.provider;
 
-// const banned = ["admin", "root", "test"];
-// console.log("Banned usernames:", banned);
+  console.log("Provider:", provider?.provider);
+  console.log("Protocol:", provider?.protocol);
 
-// const username = event?.context?.auth?.suppliedUsername;
-// console.log("Extracted username:", username);
+  const providerData = provider?.data || {};
 
-// if (banned.includes(username)) {
-// console.log("Username is banned. Invalidating form field.");
-// invalidateFormField("p_username", "This username is not allowed.");
-// } else {
-// console.log("Username is allowed.");
-// }
-// }
+  // Show available fields only
+  console.log(
+    "Provider data keys:",
+    Object.keys(providerData)
+  );
 
-export default async function Workflow(event) {
-  console.log("Workflow triggered: onUsernameProvided");
-  console.log("Event received:", JSON.stringify(event, null, 2));
+  // Check token availability
+  console.log(
+    "Has ID token:",
+    !!providerData.idToken
+  );
 
-  const orgCode = event?.context?.organization?.code || event?.context?.organization?.id;
-  console.log("User organization:", orgCode);
+  console.log(
+    "Has access token:",
+    !!providerData.accessToken
+  );
 
-  // Only apply rule for org1
-  if (orgCode !== "TestOrg") {
-    console.log(orgcode,"Not TestOrg. Skipping username validation.");
-    return;
-  }
+  console.log(
+    "Has refresh token:",
+    !!providerData.refreshToken
+  );
 
-  const banned = ["admin", "root", "test"];
-  console.log("Banned usernames:", banned);
+  // Also check snake_case possibility
+  console.log(
+    "Has access_token:",
+    !!providerData.access_token
+  );
 
-  const username = event?.context?.auth?.suppliedUsername;
-  console.log("Extracted username:", username);
-
-  if (banned.includes(username)) {
-    console.log("Username is banned. Invalidating form field.");
-    invalidateFormField("p_username", "This username is not allowed.");
-  } else {
-    console.log("Username is allowed.");
-  }
+  console.log(
+    "Has refresh_token:",
+    !!providerData.refresh_token
+  );
 }
-
